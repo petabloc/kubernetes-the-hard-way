@@ -2,9 +2,9 @@
 
 ## AWS
 
-This tutorial leverages [Amazon Web Services](https://aws.amazon.com//) to streamline provisioning of the compute infrastructure required to bootstrap a Kubernetes cluster from the ground up. This will cost you money; if that's a concern consider instead using the original [Google Cloud version](https://github.com/kelseyhightower/kubernetes-the-hard-way) of this tutorial, as Google offers $300 in free credits.
+This tutorial leverages [Amazon Web Services](https://aws.amazon.com//) to streamline provisioning of the compute infrastructure required to bootstrap a Kubernetes cluster from the ground up. This will cost you money; if that's a concern consider instead using the original [Google Cloud version](https://github.com/petabloc/kubernetes-the-hard-way/tree/main/GCP) of this tutorial, as Google offers $300 in free credits.
 
-[Estimated cost](https://cloud.google.com/products/calculator#id=873932bc-0840-4176-b0fa-a8cfd4ca61ae) to run this tutorial: $0.23 per hour ($5.50 per day).
+Estimated cost to run this tutorial: UPDATE LATER AFTER WE FINISH THE DOCS in this format: $0.XX per hour ($Y.ZZ per day).
 
 > The compute resources required for this tutorial exceed the AWS free tier.
 
@@ -29,8 +29,6 @@ If you are using the `aws` command-line tool for the first time `configure` is t
 ```
 aws configure
 ```
-
-Then be sure to authorize gcloud to access the Cloud Platform with your Google user credentials:
 
 ## Running Commands in Parallel with tmux
 
