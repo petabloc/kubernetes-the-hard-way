@@ -21,9 +21,9 @@ export VPC=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query Vpc.VpcId --out
 echo $VPC
 # vpc-0d8afe938a9303739
 aws ec2 associate-vpc-cidr-block --vpc-id $VPC --cidr-block 10.64.0.0/24
+# The previous command adds an additional CIDR block to the VPC
 aws ec2 modify-vpc-attribute --vpc-id ${VPC} --enable-dns-hostnames '{"Value": true}'
 aws ec2 modify-vpc-attribute --vpc-id ${VPC} --enable-dns-support '{"Value": true}'
-
 ```
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
@@ -35,7 +35,6 @@ export SUBNET=$(aws ec2 create-subnet --vpc-id $VPC --cidr-block 10.0.1.0/24 --q
 echo $SUBNET
 # subnet-0d6f9fc23c2a159da
 aws ec2 create-tags --resources ${SUBNET} --tags Key=Name,Value=kubernetes
-
 ```
 
 > The `10.0.1.0/24` IP address range can host up to 254 compute instances.
@@ -116,7 +115,7 @@ aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --protocol al
 List the firewall rules in the `kubernetes-the-hard-way` VPC network:
 
 ```
-aws ec2 describe-security-group-rules --filter Name="group-id",Values=$SECURITYGROUP --output text                                  <aws:jobboard-dev>
+aws ec2 describe-security-group-rules --filter Name="group-id",Values=$SECURITYGROUP --output text
 ```
 
 > output
@@ -160,17 +159,16 @@ export PUBLICADDRESS=$(aws elbv2 describe-load-balancers \
   --output text --query 'LoadBalancers[].DNSName')
 ```
 
-Verify the `kubernetes-the-hard-way` static IP address was created in your default compute region:
+Verify the `kubernetes-the-hard-way` DNS Name was created in your region:
 
 ```
-gcloud compute addresses list --filter="name=('kubernetes-the-hard-way')"
+aws elbv2 describe-load-balancers --names "kubernetes" --output text --query 'LoadBalancers[].DNSName'
 ```
 
 > output
 
 ```
-NAME                     ADDRESS/RANGE   TYPE      PURPOSE  NETWORK  REGION    SUBNET  STATUS
-kubernetes-the-hard-way  XX.XXX.XXX.XXX  EXTERNAL                    us-west1          RESERVED
+kubernetes-25b5939aa3970c1b.elb.us-west-2.amazonaws.com
 ```
 
 ## Compute Instances
@@ -183,16 +181,16 @@ Create three compute instances which will host the Kubernetes control plane:
 
 ```
 export AMI=$(aws ssm get-parameters \
-        --names '/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id' \
+        --names '/aws/service/canonical/ubuntu/server/23.04/stable/current/amd64/hvm/ebs-gp2/ami-id' \
         --query 'Parameters[0].[Value]' --output text)
 
-aws ec2 create-key-pair --key-name kubernetes --query 'KeyMaterial' --output text > kubernetes.rsa
-chmod 600 kubernetes.rsa
+aws ec2 create-key-pair --key-name kubernetes-the-hard-way --query 'KeyMaterial' --output text > kubernetes-the-hard-way.rsa
+chmod 600 kubernetes-the-hard-way.rsa
 for i in 0 1 2; do
       ID=$(aws ec2 run-instances \
         --image-id $AMI \
         --instance-type t3.small \
-        --key-name kubernetes \
+        --key-name kubernetes-the-hard-way \
         --private-ip-address 10.0.1.1${i} \
         --security-group-ids $SECURITYGROUP \
         --subnet-id $SUBNET \
@@ -202,6 +200,7 @@ for i in 0 1 2; do
         --output text \
         --query 'Instances[0].InstanceId')
       aws ec2 create-tags --resources ${ID} --tags "Key=Name,Value=controller-${i}"
+      aws ec2 create-tags --resources ${ID} --tags "Key=items,Value=kubernetes-the-hard-way"
       aws ec2 modify-instance-attribute --instance-id ${ID} --no-source-dest-check
       echo "Created controller-${i}"
 done
@@ -220,7 +219,7 @@ for i in 0 1 2; do
       ID=$(aws ec2 run-instances \
         --image-id $AMI \
         --instance-type t3.small \
-        --key-name kubernetes \
+        --key-name kubernetes-the-hard-way \
         --private-ip-address 10.0.1.2${i} \
         --security-group-ids $SECURITYGROUP \
         --subnet-id $SUBNET \
@@ -230,6 +229,7 @@ for i in 0 1 2; do
         --output text \
         --query 'Instances[0].InstanceId')
       aws ec2 create-tags --resources ${ID} --tags "Key=Name,Value=worker-${i}"
+      aws ec2 create-tags --resources ${ID} --tags "Key=items,Value=kubernetes-the-hard-way"
       aws ec2 modify-instance-attribute --instance-id ${ID} --no-source-dest-check
       echo "Created worker-${i}"
 done
@@ -241,19 +241,30 @@ TODO
 List the compute instances in your default compute zone:
 
 ```
-gcloud compute instances list --filter="tags.items=kubernetes-the-hard-way"
+aws ec2 describe-instances --filters "Name=tag:items,Values=kubernetes-the-hard-way" --query 'Reservations[*].Instances[*].{PrivateDNSName:PrivateDnsName,Subnet:Tags[*]}'
 ```
 
 > output
 
 ```
-NAME          ZONE        MACHINE_TYPE   PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP    STATUS
-controller-0  us-west1-c  e2-standard-2               10.240.0.10  XX.XX.XX.XXX   RUNNING
-controller-1  us-west1-c  e2-standard-2               10.240.0.11  XX.XXX.XXX.XX  RUNNING
-controller-2  us-west1-c  e2-standard-2               10.240.0.12  XX.XXX.XX.XXX  RUNNING
-worker-0      us-west1-c  e2-standard-2               10.240.0.20  XX.XX.XXX.XXX  RUNNING
-worker-1      us-west1-c  e2-standard-2               10.240.0.21  XX.XX.XX.XXX   RUNNING
-worker-2      us-west1-c  e2-standard-2               10.240.0.22  XX.XXX.XX.XX   RUNNING
+ip-10-0-1-12.us-west-2.compute.internal
+TAGS	Name	controller-2
+TAGS	items	kubernetes-the-hard-way
+ip-10-0-1-10.us-west-2.compute.internal
+TAGS	Name	controller-0
+TAGS	items	kubernetes-the-hard-way
+ip-10-0-1-22.us-west-2.compute.internal
+TAGS	Name	worker-2
+TAGS	items	kubernetes-the-hard-way
+ip-10-0-1-21.us-west-2.compute.internal
+TAGS	Name	worker-1
+TAGS	items	kubernetes-the-hard-way
+ip-10-0-1-11.us-west-2.compute.internal
+TAGS	Name	controller-1
+TAGS	items	kubernetes-the-hard-way
+ip-10-0-1-20.us-west-2.compute.internal
+TAGS	items	kubernetes-the-hard-way
+TAGS	Name	worker-0
 ```
 
 Next: [Provisioning a CA and Generating TLS Certificates](04-certificate-authority.md)
