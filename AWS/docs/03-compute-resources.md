@@ -17,16 +17,16 @@ In this section a dedicated [Virtual Private Cloud](https://aws.amazon.com/vpc/)
 Create a custom VPC network:
 
 ```
-export VPC=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query Vpc.VpcId --output text)
+export VPC=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query Vpc.VpcId --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=kubernetes-the-hard-way}]' --output text)
 echo $VPC
 # vpc-0d8afe938a9303739
 aws ec2 associate-vpc-cidr-block --vpc-id $VPC --cidr-block 10.64.0.0/24
-# The previous command adds an additional CIDR block to the VPC
+# The previous command adds an additional CIDR block to the VPC (JAMESP Not sure if this is ever needed)
 aws ec2 modify-vpc-attribute --vpc-id ${VPC} --enable-dns-hostnames '{"Value": true}'
 aws ec2 modify-vpc-attribute --vpc-id ${VPC} --enable-dns-support '{"Value": true}'
 ```
 
-A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
+A [subnet](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
 Create a public subnet inside of that VPC network:
 
@@ -34,7 +34,7 @@ Create a public subnet inside of that VPC network:
 export SUBNET=$(aws ec2 create-subnet --vpc-id $VPC --cidr-block 10.0.1.0/24 --query Subnet.SubnetId --output text)
 echo $SUBNET
 # subnet-0d6f9fc23c2a159da
-aws ec2 create-tags --resources ${SUBNET} --tags Key=Name,Value=kubernetes
+aws ec2 create-tags --resources ${SUBNET} --tags Key=Name,Value=kubernetes-the-hard-way
 ```
 
 > The `10.0.1.0/24` IP address range can host up to 254 compute instances.
@@ -99,7 +99,7 @@ aws ec2 describe-route-tables --route-table-id $ROUTETABLE
 Create a security group and create rules that allow external SSH, ICMP, and HTTPS:
 
 ```
-export SECURITYGROUP=$(aws ec2 create-security-group --group-name kubernetes --description "Kubernetes the Much Harder Way VPC" --vpc-id $VPC --query 'GroupId' --output text)
+export SECURITYGROUP=$(aws ec2 create-security-group --group-name kubernetes-the-hard-way --description "Kubernetes the Much Harder Way VPC" --vpc-id $VPC --query 'GroupId' --output text)
 
 aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=0.0.0.0/0}]"
 aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --protocol tcp --port 6443 --cidr 0.0.0.0/0
@@ -112,7 +112,7 @@ aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --protocol al
 
 > An [external load balancer](https://cloud.google.com/compute/docs/load-balancing/network/) will be used to expose the Kubernetes API Servers to remote clients.
 
-List the firewall rules in the `kubernetes-the-hard-way` VPC network:
+List the Security Group rules in the `kubernetes-the-hard-way` VPC network:
 
 ```
 aws ec2 describe-security-group-rules --filter Name="group-id",Values=$SECURITYGROUP --output text
@@ -134,7 +134,7 @@ SECURITYGROUPRULES      0.0.0.0/0       6443    sg-0a94843f57b84ff52    67774530
 Allocate a static IP address that will be attached to the external load balancer fronting the Kubernetes API Servers:
 
 ```
-export LOADBALANCER=$(aws elbv2 create-load-balancer \
+export LOADBALANCER=$(aws elbv2 create-load-balancer \  JAMESP ADD TAGS IN HERE
     --name kubernetes \
     --subnets ${SUBNET} \
     --scheme internet-facing \
