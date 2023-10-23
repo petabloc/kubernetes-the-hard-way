@@ -2,8 +2,10 @@
 
 In this lab you will provision a [PKI Infrastructure](https://en.wikipedia.org/wiki/Public_key_infrastructure) using CloudFlare's PKI toolkit, [cfssl](https://github.com/cloudflare/cfssl), then use it to bootstrap a Certificate Authority, and generate TLS certificates for the following components: etcd, kube-apiserver, kube-controller-manager, kube-scheduler, kubelet, and kube-proxy.
 
-## Certificate Authority
+## NOTE: 
+We expect you to generate all these files in the same directory, but a different directory than the repo is cloned too
 
+## Certificate Authority
 In this section you will provision a Certificate Authority that can be used to generate additional TLS certificates.
 
 Generate the CA configuration file, certificate, and private key:
@@ -100,32 +102,6 @@ cfssl gencert \
 
 }
 ```
-=======================================
-JAMESP: What happens if you change the Organization?
-  In first file(s), say something like "we expect you to generate all these files in the same directory"
-  I wonder if this is cause we’re using 23.04 instead of 20.04 or whatever they had before and ubuntu changed login mechanism?
-
-
-3:00
-GUESSING THO
-
-
-Andrew Bell
-  3:11 PM
-or just ssh not running by default
-3:11
-also default password of blank doesn’t work :upside_down_face:
-
-
-Verdi Rodrigues-Diamond
-  3:13 PM
-interesting. They call it kubernetes-the-hard-way.rsa in one spot and kubernetes.rsa in another
-3:13
-https://github.com/petabloc/kubernetes-the-hard-way/blob/main/AWS/docs/03-compute-resources.md?plain=1#L187
-3:14
-https://github.com/petabloc/kubernetes-the-hard-way/blob/main/AWS/docs/04-certificate-authority.md?plain=1#L405
-
-=====================================
 Results:
 
 ```
@@ -364,7 +340,7 @@ cfssl gencert \
 
 }
 ```
-NOTE: How to set PUBLICIPADDRESS, check previous page, also in previous page JAMESP where the fuck does "LOAD_BALANCER_ARN" come from.
+NOTE: PUBLICADDRESS comes from previous page.
 
 > The Kubernetes API server is automatically assigned the `kubernetes` internal dns name, which will be linked to the first IP address (`10.32.0.1`) from the address range (`10.32.0.0/24`) reserved for internal cluster services during the [control plane bootstrapping](08-bootstrapping-kubernetes-controllers.md#configure-the-kubernetes-api-server) lab.
 
@@ -431,7 +407,7 @@ for instance in worker-0 worker-1 worker-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  scp -i kubernetes-the-hard-way.rsa ca.pem ${instance}-key.pem ${instance}.pem ubuntu@${external_ip}:~/
+  scp -i ~/.ssh/kubernetes-the-hard-way.rsa -o IdentitiesOnly=yes ca.pem ${instance}-key.pem ${instance}.pem ubuntu@${external_ip}:~/
 done
 ```
 
@@ -444,7 +420,7 @@ for instance in controller-0 controller-1 controller-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  scp -i kubernetes-the-hard-way.rsa \
+  scp -i ~/.ssh/kubernetes-the-hard-way.rsa -o IdentitiesOnly=yes \
     ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
     service-account-key.pem service-account.pem ubuntu@${external_ip}:~/
 done
