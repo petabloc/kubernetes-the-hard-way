@@ -17,16 +17,16 @@ In this section a dedicated [Virtual Private Cloud](https://aws.amazon.com/vpc/)
 Create a custom VPC network:
 
 ```
-export VPC=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query Vpc.VpcId --output text)
+export VPC=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query Vpc.VpcId --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=kubernetes-the-hard-way}]' --output text)
 echo $VPC
 # vpc-0d8afe938a9303739
 aws ec2 associate-vpc-cidr-block --vpc-id $VPC --cidr-block 10.64.0.0/24
-# The previous command adds an additional CIDR block to the VPC
+# The previous command adds an additional CIDR block to the VPC (Don't yet know for sure if this is ever needed)
 aws ec2 modify-vpc-attribute --vpc-id ${VPC} --enable-dns-hostnames '{"Value": true}'
 aws ec2 modify-vpc-attribute --vpc-id ${VPC} --enable-dns-support '{"Value": true}'
 ```
 
-A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
+A [subnet](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
 Create a public subnet inside of that VPC network:
 
@@ -34,7 +34,8 @@ Create a public subnet inside of that VPC network:
 export SUBNET=$(aws ec2 create-subnet --vpc-id $VPC --cidr-block 10.0.1.0/24 --query Subnet.SubnetId --output text)
 echo $SUBNET
 # subnet-0d6f9fc23c2a159da
-aws ec2 create-tags --resources ${SUBNET} --tags Key=Name,Value=kubernetes
+aws ec2 create-tags --resources ${SUBNET} --tags Key=Name,Value=kubernetes-the-hard-way
+aws ec2 modify-subnet-attribute --subnet-id $SUBNET --map-public-ip-on-launch
 ```
 
 > The `10.0.1.0/24` IP address range can host up to 254 compute instances.
@@ -55,7 +56,6 @@ export ROUTETABLE=$(aws ec2 create-route-table --vpc-id $VPC --query RouteTable.
 echo $ROUTETABLE
 # rtb-02c3ef4e030f0d5b2
 aws ec2 create-route --route-table-id $ROUTETABLE --destination-cidr-block 0.0.0.0/0 --gateway-id $INTERNETGW
-aws ec2 modify-subnet-attribute --subnet-id $SUBNET --map-public-ip-on-launch
 
 ```
 
@@ -99,7 +99,8 @@ aws ec2 describe-route-tables --route-table-id $ROUTETABLE
 Create a security group and create rules that allow external SSH, ICMP, and HTTPS:
 
 ```
-export SECURITYGROUP=$(aws ec2 create-security-group --group-name kubernetes --description "Kubernetes the Much Harder Way VPC" --vpc-id $VPC --query 'GroupId' --output text)
+export SECURITYGROUP=$(aws ec2 create-security-group --group-name kubernetes-the-hard-way --description "Kubernetes the Much Harder Way VPC" --vpc-id $VPC --query 'GroupId' --output text)
+aws ec2 create-tags --resources ${SECURITYGROUP} --tags Key=Name,Value=kubernetes-the-hard-way
 
 aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=0.0.0.0/0}]"
 aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --protocol tcp --port 6443 --cidr 0.0.0.0/0
@@ -112,7 +113,7 @@ aws ec2 authorize-security-group-ingress --group-id $SECURITYGROUP --protocol al
 
 > An [external load balancer](https://cloud.google.com/compute/docs/load-balancing/network/) will be used to expose the Kubernetes API Servers to remote clients.
 
-List the firewall rules in the `kubernetes-the-hard-way` VPC network:
+List the Security Group rules in the `kubernetes-the-hard-way` VPC network:
 
 ```
 aws ec2 describe-security-group-rules --filter Name="group-id",Values=$SECURITYGROUP --output text
@@ -135,10 +136,11 @@ Allocate a static IP address that will be attached to the external load balancer
 
 ```
 export LOADBALANCER=$(aws elbv2 create-load-balancer \
-    --name kubernetes \
+    --name kubernetes-the-hard-way \
     --subnets ${SUBNET} \
     --scheme internet-facing \
     --type network \
+    --tags Key=Name,Value=kubernetes-the-hard-way \
     --output text --query 'LoadBalancers[].LoadBalancerArn')
 export TARGETGROUP=$(aws elbv2 create-target-group \
     --name kubernetes \
@@ -155,14 +157,14 @@ aws elbv2 create-listener \
     --default-actions Type=forward,TargetGroupArn=${TARGETGROUP} \
     --output text --query 'Listeners[].ListenerArn'
 export PUBLICADDRESS=$(aws elbv2 describe-load-balancers \
-  --load-balancer-arns ${LOAD_BALANCER_ARN} \
+  --load-balancer-arns ${LOADBALANCER} \
   --output text --query 'LoadBalancers[].DNSName')
 ```
 
 Verify the `kubernetes-the-hard-way` DNS Name was created in your region:
 
 ```
-aws elbv2 describe-load-balancers --names "kubernetes" --output text --query 'LoadBalancers[].DNSName'
+aws elbv2 describe-load-balancers --names "kubernetes-the-hard-way" --output text --query 'LoadBalancers[].DNSName'
 ```
 
 > output
@@ -184,8 +186,10 @@ export AMI=$(aws ssm get-parameters \
         --names '/aws/service/canonical/ubuntu/server/23.04/stable/current/amd64/hvm/ebs-gp2/ami-id' \
         --query 'Parameters[0].[Value]' --output text)
 
-aws ec2 create-key-pair --key-name kubernetes-the-hard-way --query 'KeyMaterial' --output text > kubernetes-the-hard-way.rsa
-chmod 600 kubernetes-the-hard-way.rsa
+aws ec2 create-key-pair --key-name kubernetes-the-hard-way --query 'KeyMaterial' --output text > ~/.ssh/kubernetes-the-hard-way.rsa
+
+chmod 600 ~/.ssh/kubernetes-the-hard-way.rsa
+
 for i in 0 1 2; do
       ID=$(aws ec2 run-instances \
         --image-id $AMI \

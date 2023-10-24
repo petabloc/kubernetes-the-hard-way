@@ -10,11 +10,11 @@ In this section you will generate kubeconfig files for the `controller manager`,
 
 Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the IP address assigned to the external load balancer fronting the Kubernetes API Servers will be used.
 
-Retrieve the `kubernetes-the-hard-way` static IP address:
+Retrieve the `kubernetes-the-hard-way` static IP address (NOTE: LOADBALANCER is the value of the LB ARN):
 
 ```
 export PUBLICADDRESS=$(aws elbv2 describe-load-balancers \
-  --load-balancer-arns ${LOAD_BALANCER_ARN} \
+  --load-balancer-arns ${LOADBALANCER} \
   --output text --query 'LoadBalancers[].DNSName')
 ```
 
@@ -202,7 +202,7 @@ for instance in worker-0 worker-1 worker-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  scp -i kubernetes.rsa \
+  scp -i ~/.ssh/kubernetes-the-hard-way.rsa -o IdentitiesOnly=yes \
     ${instance}.kubeconfig kube-proxy.kubeconfig ubuntu@${external_ip}:~/
 done
 ```
@@ -216,7 +216,7 @@ for instance in controller-0 controller-1 controller-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  scp -i kubernetes.rsa \
+  scp -i ~/.ssh/kubernetes-the-hard-way.rsa -o IdentitiesOnly=yes \
     admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ubuntu@${external_ip}:~/
 done
 
