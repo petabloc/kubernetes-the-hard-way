@@ -41,7 +41,7 @@ for instance in controller-0 controller-1 controller-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  scp -i kubernetes.rsa encryption-config.yaml ubuntu@${external_ip}:~/
+  scp -i ~/.ssh/kubernetes-the-hard-way.rsa encryption-config.yaml ubuntu@${external_ip}:~/
 done
 
 ```
