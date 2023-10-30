@@ -3,17 +3,21 @@
 Kubernetes components are stateless and store cluster state in [etcd](https://github.com/etcd-io/etcd). In this lab you will bootstrap a three node etcd cluster and configure it for high availability and secure remote access.
 
 ## Prerequisites
-
-The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
+The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`.  You will need 3 separate terminals (or tmux, noted below).  This command OUTPUTS the relevant ssh commands to connect to each controller.
 
 ```
+echo 
+echo
+echo "  Execute the following commands in separate terminals to connect to each controller"
+
 for instance in controller-0 controller-1 controller-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  echo ssh -i kubernetes.rsa ubuntu@$external_ip
+  echo ssh -i ~/.ssh/kubernetes-the-hard-way.rsa -o IdentitiesOnly=yes \
+  ubuntu@$external_ip
 done
 ```
 
