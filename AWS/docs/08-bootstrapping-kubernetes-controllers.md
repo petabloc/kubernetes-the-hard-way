@@ -35,10 +35,10 @@ Download the official Kubernetes release binaries:
 
 ```
 wget -q --show-progress --https-only --timestamping \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-apiserver" \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-controller-manager" \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-scheduler" \
-  "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl"
+  "https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kube-apiserver" \
+  "https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kube-controller-manager" \
+  "https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kube-scheduler" \
+  "https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kubectl"
 ```
 
 Install the Kubernetes binaries:
@@ -49,7 +49,6 @@ Install the Kubernetes binaries:
   sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
 }
 ```
-
 ### Configure the Kubernetes API Server
 
 ```
@@ -68,7 +67,7 @@ The instance internal IP address will be used to advertise the API Server to mem
 INTERNAL_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 ```
 
-> Note: you may need to set the PUBLICADDRESS environment variable manually. 
+> Note: you may need to set the PUBLICADDRESS environment variable manually.  It is the DNS address of the Load Balancer
 
 Create the `kube-apiserver.service` systemd unit file:
 
@@ -324,12 +323,12 @@ Make a HTTP request for the Kubernetes version info:
 ```
 {
   "major": "1",
-  "minor": "21",
-  "gitVersion": "v1.21.0",
-  "gitCommit": "cb303e613a121a29364f75cc67d3d580833a7479",
+  "minor": "28",
+  "gitVersion": "v1.28.3",
+  "gitCommit": "a8a1abc25cad87333840cd7d54be2efaf31a3177",
   "gitTreeState": "clean",
-  "buildDate": "2021-04-08T16:25:06Z",
-  "goVersion": "go1.16.1",
+  "buildDate": "2023-10-18T11:33:18Z",
+  "goVersion": "go1.20.10",
   "compiler": "gc",
   "platform": "linux/amd64"
 }
