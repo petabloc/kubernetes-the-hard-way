@@ -13,7 +13,7 @@ for instance in worker-0 worker-1 worker-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  echo ssh -i kubernetes.rsa ubuntu@$external_ip
+  echo ssh -i kubernetes.rsa -o IdentitiesOnly=yes ubuntu@$external_ip
 done
 ```
 
@@ -235,11 +235,7 @@ Requires=containerd.service
 [Service]
 ExecStart=/usr/local/bin/kubelet \\
   --config=/var/lib/kubelet/kubelet-config.yaml \\
-  --container-runtime=remote \\
-  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
-  --image-pull-progress-deadline=2m \\
   --kubeconfig=/var/lib/kubelet/kubeconfig \\
-  --network-plugin=cni \\
   --register-node=true \\
   --v=2
 Restart=on-failure
@@ -247,6 +243,15 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+EOF
+```
+
+Create the `crictl.yaml` file:
+```
+cat <<EOF | sudo tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock 
+image-endpoint: unix:///run/containerd/containerd.sock
+image-pull-progress-deadline: 2m
 EOF
 ```
 
@@ -298,15 +303,6 @@ EOF
 }
 ```
 
-```
-JAMESP SHIT AIIN'T WORKING!!! Start here!
-WARN[0000] runtime connect using default endpoints: [unix:///var/run/dockershim.sock unix:///run/containerd/containerd.sock unix:///run/crio/crio.sock unix:///var/run/cri-dockerd.sock]. As the default settings are now deprecated, you should set the endpoint instead.
-ERRO[0000] validate service connection: validate CRI v1 runtime API for endpoint "unix:///var/run/dockershim.sock": rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /var/run/dockershim.sock: connect: no such file or directory"
-ERRO[0000] validate service connection: validate CRI v1 runtime API for endpoint "unix:///run/containerd/containerd.sock": rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /run/containerd/containerd.sock: connect: permission denied"
-ERRO[0000] validate service connection: validate CRI v1 runtime API for endpoint "unix:///run/crio/crio.sock": rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /run/crio/crio.sock: connect: no such file or directory"
-ERRO[0000] validate service connection: validate CRI v1 runtime API for endpoint "unix:///var/run/cri-dockerd.sock": rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /var/run/cri-dockerd.sock: connect: no such file or directory"
-FATA[0000] validate service connection: validate CRI v1 runtime API for endpoint "unix:///var/run/cri-dockerd.sock": rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial unix /var/run/cri-dockerd.sock: connect: no such file or directory"
-```
 > Remember to run the above commands on each worker node: `worker-0`, `worker-1`, and `worker-2`.
 
 ## Verification
@@ -321,7 +317,7 @@ external_ip=$(aws ec2 describe-instances --filters \
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-ssh -i kubernetes.rsa ubuntu@${external_ip} kubectl get nodes --kubeconfig admin.kubeconfig
+ssh -i ~/.ssh/kubernetes-the-hard-way.rsa ubuntu@${external_ip} -o IdentitiesOnly=yes kubectl get nodes --kubeconfig admin.kubeconfig
 ```
 
 > output
