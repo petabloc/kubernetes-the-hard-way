@@ -10,9 +10,9 @@ In this section you will generate kubeconfig files for the `controller manager`,
 
 Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the IP address assigned to the external load balancer fronting the Kubernetes API Servers will be used.
 
-Retrieve the `kubernetes-the-hard-way` static IP address (NOTE: LOADBALANCER is the value of the LB ARN):
-
 ```
+LOADBALANCER=$(aws elbv2 describe-load-balancers --names kubernetes-the-hard-way --query 'LoadBalancers[].LoadBalancerArn' --output text)
+
 export PUBLICADDRESS=$(aws elbv2 describe-load-balancers \
   --load-balancer-arns ${LOADBALANCER} \
   --output text --query 'LoadBalancers[].DNSName')

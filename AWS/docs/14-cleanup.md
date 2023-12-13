@@ -57,6 +57,8 @@ Delete the `kubernetes-the-hard-way` networking nonsense:
 
 ```
 {
+LOADBALANCER=$(aws elbv2 describe-load-balancers --names kubernetes-the-hard-way --query 'LoadBalancers[].LoadBalancerArn' --output text)
+
 aws elbv2 delete-load-balancer --load-balancer-arn "${LOADBALANCER}"
 aws elbv2 delete-target-group --target-group-arn "${TARGETGROUP}"
 aws ec2 delete-security-group --group-id "${SECURITYGROUP}"
