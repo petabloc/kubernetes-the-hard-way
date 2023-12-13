@@ -13,7 +13,7 @@ for instance in worker-0 worker-1 worker-2; do
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  echo ssh -i kubernetes.rsa ubuntu@$external_ip
+  echo ssh -i kubernetes.rsa -o IdentitiesOnly=yes ubuntu@$external_ip
 done
 ```
 
@@ -56,13 +56,13 @@ sudo swapoff -a
 
 ```
 wget -q --show-progress --https-only --timestamping \
-  https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz \
-  https://github.com/opencontainers/runc/releases/download/v1.0.0-rc93/runc.amd64 \
-  https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz \
-  https://github.com/containerd/containerd/releases/download/v1.4.4/containerd-1.4.4-linux-amd64.tar.gz \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-proxy \
-  https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubelet
+  https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.28.0/crictl-v1.28.0-linux-amd64.tar.gz \
+  https://github.com/opencontainers/runc/releases/download/v1.1.10/runc.amd64 \
+  https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz \
+  https://github.com/containerd/containerd/releases/download/v1.7.8/containerd-1.7.8-linux-amd64.tar.gz \
+  https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kubectl \
+  https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kube-proxy \
+  https://storage.googleapis.com/kubernetes-release/release/v1.28.3/bin/linux/amd64/kubelet
 ```
 
 Create the installation directories:
@@ -82,9 +82,9 @@ Install the worker binaries:
 ```
 {
   mkdir containerd
-  tar -xvf crictl-v1.21.0-linux-amd64.tar.gz
-  tar -xvf containerd-1.4.4-linux-amd64.tar.gz -C containerd
-  sudo tar -xvf cni-plugins-linux-amd64-v0.9.1.tgz -C /opt/cni/bin/
+  tar -xvf crictl-v1.28.0-linux-amd64.tar.gz
+  tar -xvf containerd-1.7.8-linux-amd64.tar.gz -C containerd
+  sudo tar -xvf cni-plugins-linux-amd64-v1.3.0.tgz -C /opt/cni/bin/
   sudo mv runc.amd64 runc
   chmod +x crictl kubectl kube-proxy kubelet runc
   sudo mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
@@ -107,7 +107,7 @@ Create the `bridge` network configuration file:
 ```
 cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
 {
-    "cniVersion": "0.4.0",
+    "cniVersion": "1.0.0",
     "name": "bridge",
     "type": "bridge",
     "bridge": "cnio0",
@@ -129,7 +129,7 @@ Create the `loopback` network configuration file:
 ```
 cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
 {
-    "cniVersion": "0.4.0",
+    "cniVersion": "1.0.0",
     "name": "lo",
     "type": "loopback"
 }
@@ -235,11 +235,7 @@ Requires=containerd.service
 [Service]
 ExecStart=/usr/local/bin/kubelet \\
   --config=/var/lib/kubelet/kubelet-config.yaml \\
-  --container-runtime=remote \\
-  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
-  --image-pull-progress-deadline=2m \\
   --kubeconfig=/var/lib/kubelet/kubeconfig \\
-  --network-plugin=cni \\
   --register-node=true \\
   --v=2
 Restart=on-failure
@@ -247,6 +243,15 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+EOF
+```
+
+Create the `crictl.yaml` file:
+```
+cat <<EOF | sudo tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock 
+image-endpoint: unix:///run/containerd/containerd.sock
+image-pull-progress-deadline: 2m
 EOF
 ```
 
@@ -312,16 +317,16 @@ external_ip=$(aws ec2 describe-instances --filters \
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-ssh -i kubernetes.rsa ubuntu@${external_ip} kubectl get nodes --kubeconfig admin.kubeconfig
+ssh -i ~/.ssh/kubernetes-the-hard-way.rsa ubuntu@${external_ip} -o IdentitiesOnly=yes kubectl get nodes --kubeconfig admin.kubeconfig
 ```
 
 > output
 
 ```
 NAME       STATUS   ROLES    AGE   VERSION
-worker-0   Ready    <none>   22s   v1.21.0
-worker-1   Ready    <none>   22s   v1.21.0
-worker-2   Ready    <none>   22s   v1.21.0
+worker-0   Ready    <none>   22s   v1.28.3
+worker-1   Ready    <none>   22s   v1.28.3
+worker-2   Ready    <none>   22s   v1.28.3
 ```
 
 Next: [Configuring kubectl for Remote Access](10-configuring-kubectl.md)
