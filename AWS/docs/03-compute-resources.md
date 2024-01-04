@@ -52,7 +52,7 @@ aws ec2 attach-internet-gateway --vpc-id $VPC --internet-gateway-id $INTERNETGW
 Create and attach a route table that tells instances in that subnet to use the internet gateway, and set the subnet to automatially map public IP addresses to private IP addresses on launch:
 
 ```
-export ROUTETABLE=$(aws ec2 create-route-table --vpc-id $VPC --query RouteTable.RouteTableId --output text)
+export ROUTETABLE=$(aws ec2 create-route-table --vpc-id $VPC --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=kubernetes-the-hard-way}]' --query RouteTable.RouteTableId --output text)
 echo $ROUTETABLE
 # rtb-02c3ef4e030f0d5b2
 aws ec2 create-route --route-table-id $ROUTETABLE --destination-cidr-block 0.0.0.0/0 --gateway-id $INTERNETGW

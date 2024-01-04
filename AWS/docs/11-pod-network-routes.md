@@ -15,9 +15,10 @@ Set the necessary environment variables:
 export VPC=$(aws ec2 describe-vpcs --filter "Name=tag:Name,Values=kubernetes-the-hard-way" --query 'Vpcs[].VpcId' --output text)
 echo $VPC
 
-export ROUTETABLE=$(aws ec2 create-route-table --vpc-id $VPC --query RouteTable.RouteTableId --output text)
+export ROUTETABLE=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=${VPC}" "Name=tag:Name,Values=kubernetes-the-hard-way" --query 'RouteTables[].RouteTableId' --output text)
 echo $ROUTETABLE
 ```
+
 Print the internal IP address and Pod CIDR range for each worker instance, then create a route for each worker instance in the `kubernetes-the-hard-way` VPC network.:
 
 ```
