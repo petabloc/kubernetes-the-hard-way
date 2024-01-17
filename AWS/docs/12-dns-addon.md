@@ -1,8 +1,11 @@
 # Deploying the DNS Cluster Add-on
+JAMESPUPDATE THIS AFTER WE FIGURE OUT HOW TO GET PODS RUNNING
 
 In this lab you will deploy the [DNS add-on](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/) which provides DNS based service discovery, backed by [CoreDNS](https://coredns.io/), to applications running inside the Kubernetes cluster.
 
 ## The DNS Cluster Add-on
+
+UPDATE THIS TO USE THE HELM CHART INSTEAD as the yaml file is no longer available.
 
 Deploy the `coredns` cluster add-on:
 
